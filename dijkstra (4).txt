@@ -1,0 +1,189 @@
+#include <iostream>
+#include<functional>
+#include <string>
+#include <map>
+#include <queue>
+#include <utility>
+#include<locale>
+#include<vector>
+#include <ctype.h>
+#include<unordered_map>
+#include <stack>
+#include <algorithm>
+#include <list>
+#include <cstdlib>
+#include <assert.h>
+#include <stdio.h>
+#include <ctype.h>
+#include <set>
+#include <cmath>
+#include <cstring>
+#include <fstream>
+#include <stdio.h>
+#include <string.h>
+#include <sstream>
+#include <stdlib.h>
+#include <vector>
+#include <iomanip>
+#include <time.h>
+using namespace std;
+struct node{double X;double Y;};                      // to read nodes (X,Y) from file
+struct querie{node destn;node soure;double red;};     // to read  queries from file
+struct v{int road;double val;};                       // vertice whith cost and his number
+struct edg{int to;double val;}; 
+
+/**/   //vector<vector<double>> gg(10000,vector<double>(10000));
+//double gg[10000][10000];
+vector<unordered_map<int,double>> gg(200000);
+/**/   vector<string> pth(200000);
+/**/   vector<double> len(200000);
+
+int OO =1000000;                                      // infinity
+double dijkstra( double ver , int des , int sour ,vector<queue<edg>> arr)
+{
+	////// the vector of visited vertices is initially = 0
+	vector<bool> S(200000);S[sour]=0;
+
+    ////// distance to source is zero and all other infinity
+	vector<double> d(200000);d[sour]=0;for(int i=0;i<ver;i++){if(i!=sour){d[i]=OO;S[i]=0;}}
+	
+	////// set to sort in log(n)
+	set< pair<double,double> > Q;
+	v q;q.road=sour;q.val=0;Q.insert(make_pair(q.val,q.road));
+	
+	////// iterator to get mini from set
+	set< pair<double,double> >::iterator it;
+	while(!Q.empty())
+    {
+		it=Q.begin(); 
+		v u; u.road = it->second; u.val = it->first;
+		Q.erase(it);
+		if(S[u.road]) continue;
+		S[u.road]=true;
+
+
+		/**/  len[sour]=0;
+
+		int cou = arr[u.road].size();
+		for(int i=0;i<cou;i++)
+		{
+			
+			edg V = arr[u.road].front() ; arr[u.road].pop();arr[u.road].push(V);
+			if(d[V.to]>d[u.road]+V.val)
+			{ 
+			/**/	len[V.to]=len[u.road];
+			/**/	pth[V.to]=pth[u.road];
+			/**/	if(V.to!=des)
+			/**/	{
+			/**/		pth[V.to]+=to_string(V.to)+",";
+			/**/	}
+			/**/	len[V.to]+=gg[u.road][V.to];
+
+				d[V.to]=d[u.road]+V.val;
+				pair<double,double> p1(d[V.to],V.to);
+				Q.insert(p1);
+				
+			}
+		}
+
+    }
+
+	////// return shortest path of dest
+	return d[des];
+}
+int	main()
+{
+	// *************************************************************
+	vector<queue<edg>> adjList(200000);
+	int from;
+	double counte1,counte2,counte3 , speed ,Dist;
+	edg ED , ED2; 
+    ifstream myfile;
+    myfile.open("SFMap.txt");
+	vector<node> nodes(200000); int indx;
+	// read all node
+	myfile >> counte1;
+	for(int i=0;i<counte1;i++)
+	{
+		myfile >> indx;
+		myfile >> nodes[indx].X;
+		myfile >> nodes[indx].Y;
+	}
+	// read all edges in adjList
+    myfile >> counte2;
+	for(int i=0;i<counte2;i++)
+	{
+		myfile >> from;
+		myfile >> ED.to;
+		myfile >> Dist;
+		myfile >> speed;
+		ED.val = (Dist / speed)*60 ; ED2.val =ED.val; ED2.to = from; // * 60 to change H to Min
+		adjList[from].push(ED);   
+		adjList[ED.to].push(ED2);            // tow edges to make underected graph
+	/**/	gg[from][ED.to]=Dist;
+	/**/	gg[ED.to][from]=Dist;
+	}
+    myfile.close();
+    // read sour and dest from file
+	vector<querie> queries(1000);
+	double in_range;
+	int des = counte1+1 ;
+	int sou = counte1 ;
+	edg pos_nod ; 
+	ifstream myfile1;
+	myfile1.open("SFQueries.txt");
+	myfile1 >> counte3;
+	for(int i=0;i<counte3;i++)
+	{
+		myfile1 >> queries[i].soure.X;
+		myfile1 >> queries[i].soure.Y;
+		myfile1 >> queries[i].destn.X;
+		myfile1 >> queries[i].destn.Y;
+		myfile1 >> queries[i].red;
+		queries[i].red = queries[i].red/1000; // to change to Km
+	}
+	// get all possible start and end node
+	for(int i=0;i<counte3;i++)
+	{
+		vector<queue<edg>> NewAdjList(200000);
+		NewAdjList=adjList;
+		for(int j=0;j<counte1;j++)
+		{
+			// get dist between soure and node
+			in_range = sqrt(pow(queries[i].soure.X-nodes[j].X,2)+pow(queries[i].soure.Y-nodes[j].Y,2));
+			if(in_range<=queries[i].red)  // if it possible add edg conect between them
+			{
+				pos_nod.to = j; pos_nod.val = (in_range/5)*60;
+				NewAdjList[sou].push(pos_nod);
+				pos_nod.to = sou;
+				NewAdjList[j].push(pos_nod);
+				/**/	gg[sou][j]=in_range;
+				/**/	gg[j][sou]=in_range;
+			}
+			// get dist between des and node
+			in_range = sqrt(pow(queries[i].destn.X-nodes[j].X,2)+pow(queries[i].destn.Y-nodes[j].Y,2));
+			if(in_range<=queries[i].red)  // if it possible add edg conect between them
+			{
+				pos_nod.to = j; pos_nod.val = (in_range/5)*60;
+				NewAdjList[des].push(pos_nod);
+				pos_nod.to = des;
+				NewAdjList[j].push(pos_nod);
+				/**/	gg[des][j]=in_range;
+				/**/	gg[j][des]=in_range;
+			}
+		}
+	cout<<"Time "<<" -> "<<dijkstra(counte1+2,des,sou,NewAdjList)<<endl;
+		string start,enD1,enD; int st,en;
+		for(int co = 0 ; co <pth[des].size() ; co++){if(pth[des][co]==',')break;else start+=pth[des][co];} st = atoi(start.c_str());
+		for(int co = pth[des].size()-2 ; co >= 0 ; co--){if(pth[des][co]==',')break;else enD1+=pth[des][co];}
+		for(int co = enD1.size()-1 ; co >= 0 ; co--){ enD+=enD1[co];} en = atoi(enD.c_str());
+	cout<<"Total_d "<<" -> "<<len[des]<<endl;
+	cout<<"walk_d "<<" -> "<<gg[des][en]+gg[sou][st]<<endl;
+	cout<<"vec_d "<<" -> "<<len[des]-(gg[des][en]+gg[sou][st])<<endl;
+	cout<<"path "<<" -> "<<pth[des]<<endl;
+	cout<<"***************************************************************"<<endl;
+	}
+	
+	int inin;cin>>inin;
+	return 0;
+}
